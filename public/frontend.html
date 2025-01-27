@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>To-Do List</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .list {
+        margin-bottom: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+      }
+      .task {
+        margin-left: 20px;
+        display: flex;
+        align-items: center;
+      }
+      button {
+        margin-left: 10px;
+      }
+      .form-container {
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>To-Do List</h1>
+
+    <!-- Para criar lista -->
+    <div class="form-container">
+      <h2>Adicionar Nova Lista</h2>
+      <form id="new-list-form">
+        <input
+          type="text"
+          id="list-title"
+          placeholder="Título da Lista"
+          required
+        />
+        <input
+          type="text"
+          id="list-subtitle"
+          placeholder="Subtítulo da Lista"
+          required
+        />
+        <button type="submit">Adicionar Lista</button>
+      </form>
+    </div>
+
+    <!-- Div das listas -->
+    <div id="list-container"></div>
+
+    <script>
+      const API_URL = "http://localhost:3000";
+
+      // Carregar todas as listas e tarefas
+      async function loadLists() {
+        const response = await fetch(`${API_URL}/list_groups`);
+        const lists = await response.json();
+
+        const container = document.getElementById("list-container");
+        container.innerHTML = ""; // Limpa o container
+
+        lists.forEach((list) => {
+          // Criar o container para cada lista
+          const listDiv = document.createElement("div");
+          listDiv.classList.add("list");
+
+          const listHeader = document.createElement("h3");
+          listHeader.textContent = `${list.title} - ${list.subtitle}`;
+
+          const deleteListButton = document.createElement("button");
+          deleteListButton.textContent = "Excluir Lista";
+          deleteListButton.addEventListener("click", () => deleteList(list.id));
+
+          listHeader.appendChild(deleteListButton);
+          listDiv.appendChild(listHeader);
+
+          // Formulário para adicionar tarefa na lista
+          const taskForm = document.createElement("form");
+          taskForm.innerHTML = `
+          <input type="text" placeholder="Título da Tarefa" required>
+          <input type="text" placeholder="Subtítulo da Tarefa" required>
+          <button type="submit">Adicionar Tarefa</button>
+        `;
+
+          taskForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const title = taskForm.querySelector("input:nth-child(1)").value;
+            const subtitle = taskForm.querySelector("input:nth-child(2)").value;
+            addTask(list.id, title, subtitle);
+            taskForm.reset();
+          });
+
+          listDiv.appendChild(taskForm);
+
+          // Exibir as tarefas
+          list.tasks.forEach((task) => {
+            const taskDiv = document.createElement("div");
+            taskDiv.classList.add("task");
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = task.completed;
+            checkbox.addEventListener("change", () =>
+              toggleTask(list.id, task.id)
+            );
+
+            const taskText = document.createElement("span");
+            taskText.textContent = `${task.title} - ${task.subtitle}`;
+
+            const deleteTaskButton = document.createElement("button");
+            deleteTaskButton.textContent = "Excluir Tarefa";
+            deleteTaskButton.addEventListener("click", () =>
+              deleteTask(list.id, task.id)
+            );
+
+            taskDiv.appendChild(checkbox);
+            taskDiv.appendChild(taskText);
+            taskDiv.appendChild(deleteTaskButton);
+            listDiv.appendChild(taskDiv);
+          });
+
+          container.appendChild(listDiv);
+        });
+      }
+
+      // Função para criar uma nova lista
+      document
+        .getElementById("new-list-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const title = document.getElementById("list-title").value;
+          const subtitle = document.getElementById("list-subtitle").value;
+
+          const response = await fetch(`${API_URL}/list_groups`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ list_group: { title, subtitle } }),
+          });
+
+          if (response.ok) {
+            document.getElementById("new-list-form").reset();
+            loadLists(); // Recarrega as listas
+          } else {
+            console.error("Erro ao adicionar lista:", await response.json());
+          }
+        });
+
+      // Adicionar uma nova tarefa a uma lista
+      async function addTask(listId, title, subtitle) {
+        const response = await fetch(`${API_URL}/list_groups/${listId}/tasks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task: { title, subtitle, completed: false } }),
+        });
+
+        if (response.ok) {
+          loadLists(); // Recarrega as listas
+        } else {
+          console.error("Erro ao adicionar tarefa:", await response.json());
+        }
+      }
+
+      // Excluir uma lista
+      async function deleteList(listId) {
+        const response = await fetch(`${API_URL}/list_groups/${listId}`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          loadLists(); // Recarrega as listas
+        } else {
+          console.error("Erro ao excluir lista:", await response.json());
+        }
+      }
+
+      // Excluir uma tarefa
+      async function deleteTask(listId, taskId) {
+        const response = await fetch(
+          `${API_URL}/list_groups/${listId}/tasks/${taskId}`,
+          { method: "DELETE" }
+        );
+        if (response.ok) {
+          loadLists(); // Recarrega as listas
+        } else {
+          console.error("Erro ao excluir tarefa:", await response.json());
+        }
+      }
+
+      // Alternar estado de uma tarefa
+      async function toggleTask(listId, taskId) {
+        const response = await fetch(
+          `${API_URL}/list_groups/${listId}/tasks/${taskId}/toggle`,
+          { method: "PATCH" }
+        );
+        if (response.ok) {
+          loadLists(); // Recarrega as listas
+        } else {
+          console.error("Erro ao alternar tarefa:", await response.json());
+        }
+      }
+
+      // Inicializar
+      loadLists();
+    </script>
+  </body>
+</html>

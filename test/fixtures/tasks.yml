@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  title: MyString
+  subtitle: MyString
+  completed: false
+  list_group: one
+
+two:
+  title: MyString
+  subtitle: MyString
+  completed: false
+  list_group: two
